@@ -5,23 +5,11 @@ set -e
 # Configuration Variables
 # -------------------------------
 
-# SSH_USER: Username for SSH access (default: sshuser)
-SSH_USER=${SSH_USER:-sshuser}
+# SSH_USER: Username for SSH access (default: lazarev)
+SSH_USER=${SSH_USER:-lazarev}
 
 # SSH_PUBLIC_KEY_BASE64: Base64-encoded Public SSH key for authentication (default: empty)
 SSH_PUBLIC_KEY_BASE64=${SSH_PUBLIC_KEY_BASE64:-}
-
-# -------------------------------
-# User Setup
-# -------------------------------
-
-# Check if the SSH user already exists; if not, create the user
-if ! id -u "$SSH_USER" >/dev/null 2>&1; then
-    echo "Creating user: $SSH_USER"
-    useradd -m -s /bin/bash "$SSH_USER"
-else
-    echo "User $SSH_USER already exists."
-fi
 
 # -------------------------------
 # SSH Directory and Permissions
@@ -42,7 +30,7 @@ if [ -n "$SSH_PUBLIC_KEY_BASE64" ]; then
     echo "Decoding and setting up authorized_keys for user: $SSH_USER"
     echo "$SSH_PUBLIC_KEY_BASE64" | base64 --decode > "$AUTHORIZED_KEYS_PATH"
     chmod 600 "$AUTHORIZED_KEYS_PATH"
-    chown -R "$SSH_USER":"$SSH_USER" /home/"$SSH_USER"/.ssh
+    chown "$SSH_USER":"$SSH_USER" "$AUTHORIZED_KEYS_PATH"
 else
     echo "No SSH_PUBLIC_KEY_BASE64 provided. SSH access will not be available for user: $SSH_USER."
 fi
