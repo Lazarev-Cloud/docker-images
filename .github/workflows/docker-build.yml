@@ -90,8 +90,8 @@ jobs:
           file: ${{ matrix.path }}
           push: true
           tags: |
-          lazarevcloud/${{ matrix.image_name }}:latest
-          lazarevcloud/${{ matrix.image_name }}:${{ github.sha }}
+            lazarevcloud/${{ matrix.image_name }}:latest
+            lazarevcloud/${{ matrix.image_name }}:${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
           platforms: linux/amd64,linux/arm64  # Adjust based on your needs
