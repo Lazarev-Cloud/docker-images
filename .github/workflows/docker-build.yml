@@ -32,14 +32,14 @@ jobs:
           
           while IFS= read -r -d '' df; do
             dir=$(dirname "$df")
-            # More strict image name sanitization
-            image_name=$(basename "$dir" | tr -cd '[:alnum:]-_.' | tr '[:upper:]' '[:lower:]')
+            # Get the folder name and sanitize it
+            folder_name=$(basename "$dir" | tr -cd '[:alnum:]-_.' | tr '[:upper:]' '[:lower:]')
             # Ensure valid Docker image name
-            if [[ ! $image_name =~ ^[a-z0-9] ]]; then
-              image_name="app-${image_name}"
+            if [[ ! $folder_name =~ ^[a-z0-9] ]]; then
+              folder_name="app-${folder_name}"
             fi
             # Remove invalid patterns
-            image_name=$(echo "$image_name" | sed 's/-\+/-/g' | sed 's/^\.|\.$//')
+            folder_name=$(echo "$folder_name" | sed 's/-\+/-/g' | sed 's/^\.|\.$//')
             
             if [ "$first" = true ]; then
               first=false
@@ -47,7 +47,7 @@ jobs:
               json+=","
             fi
             
-            json+="{\"path\":\"$df\",\"context\":\"$dir\",\"image_name\":\"$image_name\"}"
+            json+="{\"path\":\"$df\",\"context\":\"$dir\",\"folder_name\":\"$folder_name\"}"
           done < <(find . -type f -name 'Dockerfile' -print0)
           
           json+="]}"
@@ -78,11 +78,10 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Debug image names
+      - name: Set Docker Image Name
         run: |
-          echo "Image name: lazarevcloud/${{ matrix.image_name }}"
-          echo "Latest tag: lazarevcloud/${{ matrix.image_name }}:latest"
-          echo "SHA tag: lazarevcloud/${{ matrix.image_name }}:${{ github.sha }}"
+          echo "DOCKER_IMAGE_NAME=lazarevcloud/${{ matrix.folder_name }}" >> $GITHUB_ENV
+          echo "Building image: lazarevcloud/${{ matrix.folder_name }}"
 
       - name: Build and Push Docker Image
         uses: docker/build-push-action@v5
@@ -91,8 +90,8 @@ jobs:
           file: ${{ matrix.path }}
           push: ${{ github.event_name != 'pull_request' }}
           tags: |
-            lazarevcloud/${{ matrix.image_name }}:latest
-            lazarevcloud/${{ matrix.image_name }}:${{ github.sha }}
+            ${{ env.DOCKER_IMAGE_NAME }}:latest
+            ${{ env.DOCKER_IMAGE_NAME }}:${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
           platforms: linux/amd64,linux/arm64
