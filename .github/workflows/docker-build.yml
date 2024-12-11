@@ -20,7 +20,7 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v3
 
-      # Step 2: Find all Dockerfiles and prepare the matrix
+      # Step 2: Find Dockerfiles and prepare the matrix
       - name: Find Dockerfiles and Set Matrix
         id: set-matrix
         run: |
@@ -42,7 +42,7 @@ jobs:
             dir=$(dirname "$df")
             # Extract the folder name to use as the image name
             image_name=$(basename "$dir")
-            # Replace any spaces or special characters if necessary
+            # Replace any spaces or special characters with hyphens
             image_name=$(echo "$image_name" | tr ' ' '-')
 
             if [ "$first" = true ]; then
@@ -90,4 +90,8 @@ jobs:
           file: ${{ matrix.path }}
           push: true
           tags: |
-            lazarevcloud/${{ matrix.image_name }}:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/${{ matrix.image_name }}:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/${{ matrix.image_name }}:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          platforms: linux/amd64,linux/arm64  # Adjust based on your needs
