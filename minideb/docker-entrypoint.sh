@@ -8,8 +8,8 @@ set -e
 # SSH_USER: Username for SSH access (default: lazarev)
 SSH_USER=${SSH_USER:-lazarev}
 
-# SSH_PUBLIC_KEY_BASE64: Base64-encoded Public SSH key for authentication (default: empty)
-SSH_PUBLIC_KEY_BASE64=${SSH_PUBLIC_KEY_BASE64:-}
+# SSH_PUBLIC_KEY: Base64-encoded Public SSH key for authentication (default: empty)
+SSH_PUBLIC_KEY=${SSH_PUBLIC_KEY:-}
 
 # -------------------------------
 # SSH Directory and Permissions
@@ -26,13 +26,13 @@ chmod 700 /home/"$SSH_USER"/.ssh
 # Authorized Keys Setup
 # -------------------------------
 
-if [ -n "$SSH_PUBLIC_KEY_BASE64" ]; then
+if [ -n "$SSH_PUBLIC_KEY" ]; then
     echo "Decoding and setting up authorized_keys for user: $SSH_USER"
-    echo "$SSH_PUBLIC_KEY_BASE64" | base64 --decode > "$AUTHORIZED_KEYS_PATH"
+    echo "$SSH_PUBLIC_KEY" | base64 --decode > "$AUTHORIZED_KEYS_PATH"
     chmod 600 "$AUTHORIZED_KEYS_PATH"
     chown "$SSH_USER":"$SSH_USER" "$AUTHORIZED_KEYS_PATH"
 else
-    echo "No SSH_PUBLIC_KEY_BASE64 provided. SSH access will not be available for user: $SSH_USER."
+    echo "No SSH_PUBLIC_KEY provided. SSH access will not be available for user: $SSH_USER."
 fi
 
 # -------------------------------
