@@ -8,8 +8,8 @@ set -e
 # SSH_USER: Username for SSH access (default: sshuser)
 SSH_USER=${SSH_USER:-sshuser}
 
-# SSH_PUBLIC_KEY: Public SSH key for authentication (default: empty)
-SSH_PUBLIC_KEY=${SSH_PUBLIC_KEY:-}
+# SSH_PUBLIC_KEY_BASE64: Base64-encoded Public SSH key for authentication (default: empty)
+SSH_PUBLIC_KEY_BASE64=${SSH_PUBLIC_KEY_BASE64:-}
 
 # -------------------------------
 # User Setup
@@ -38,17 +38,17 @@ chmod 700 /home/"$SSH_USER"/.ssh
 # Authorized Keys Setup
 # -------------------------------
 
-if [ -n "$SSH_PUBLIC_KEY" ]; then
-    echo "Setting up authorized_keys for user: $SSH_USER"
-    echo "$SSH_PUBLIC_KEY" > "$AUTHORIZED_KEYS_PATH"
+if [ -n "$SSH_PUBLIC_KEY_BASE64" ]; then
+    echo "Decoding and setting up authorized_keys for user: $SSH_USER"
+    echo "$SSH_PUBLIC_KEY_BASE64" | base64 --decode > "$AUTHORIZED_KEYS_PATH"
     chmod 600 "$AUTHORIZED_KEYS_PATH"
     chown -R "$SSH_USER":"$SSH_USER" /home/"$SSH_USER"/.ssh
 else
-    echo "No SSH_PUBLIC_KEY provided. SSH access will not be available for user: $SSH_USER."
+    echo "No SSH_PUBLIC_KEY_BASE64 provided. SSH access will not be available for user: $SSH_USER."
 fi
 
 # -------------------------------
-# SSH Server Configuration
+# SSH Server Configuration (Optional)
 # -------------------------------
 
 # (Optional) Disable password authentication for enhanced security
