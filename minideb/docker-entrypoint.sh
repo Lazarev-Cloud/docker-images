@@ -8,7 +8,7 @@ set -e
 # SSH_USER: Username for SSH access (default: lazarev)
 SSH_USER=${SSH_USER:-lazarev}
 
-# SSH_PUBLIC_KEY: Base64-encoded Public SSH key for authentication (default: empty)
+# SSH_PUBLIC_KEY: Public SSH key from K8s secret (already decoded)
 SSH_PUBLIC_KEY=${SSH_PUBLIC_KEY:-}
 
 # -------------------------------
@@ -18,7 +18,7 @@ SSH_PUBLIC_KEY=${SSH_PUBLIC_KEY:-}
 # Define the path for authorized_keys
 AUTHORIZED_KEYS_PATH="/home/$SSH_USER/.ssh/authorized_keys"
 
-# Create the .ssh directory if it doesn't exist (redundant if created in Dockerfile)
+# Create the .ssh directory if it doesn't exist
 mkdir -p /home/"$SSH_USER"/.ssh
 chmod 700 /home/"$SSH_USER"/.ssh
 
@@ -27,7 +27,7 @@ chmod 700 /home/"$SSH_USER"/.ssh
 # -------------------------------
 
 if [ -n "$SSH_PUBLIC_KEY" ]; then
-    echo "Decoding and setting up authorized_keys for user: $SSH_USER"
+    echo "Setting up authorized_keys for user: $SSH_USER"
     echo "$SSH_PUBLIC_KEY" > "$AUTHORIZED_KEYS_PATH"
     chmod 600 "$AUTHORIZED_KEYS_PATH"
     chown "$SSH_USER":"$SSH_USER" "$AUTHORIZED_KEYS_PATH"
@@ -36,14 +36,13 @@ else
 fi
 
 # -------------------------------
-# SSH Server Configuration (Optional)
+# SSH Server Configuration
 # -------------------------------
 
-# (Optional) Disable password authentication for enhanced security
-# Uncomment the following lines if you want to enforce key-based authentication only
-
-# echo "PasswordAuthentication no" >> /etc/ssh/sshd_config
-# echo "PermitRootLogin no" >> /etc/ssh/sshd_config
+# Ensure SSH host keys exist
+if [ ! -f /etc/ssh/ssh_host_rsa_key ]; then
+    ssh-keygen -A
+fi
 
 # -------------------------------
 # Start SSH Daemon

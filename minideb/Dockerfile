@@ -4,18 +4,14 @@ FROM bitnami/minideb:bookworm
 # Install necessary packages
 RUN install_packages openssh-server sudo
 
-# Create the necessary SSH directories
-RUN mkdir -p /var/run/sshd
+# Create SSH directory for the SSH daemon
+RUN mkdir /var/run/sshd
 
-# Ensure proper permissions for SSH directory
-RUN chmod 755 /var/run/sshd
+# Generate SSH host keys unconditionally
+RUN ssh-keygen -A
 
-# Generate or check ssh keys only if they do not exist
-RUN [ ! -f /etc/ssh/ssh_host_rsa_key ] && ssh-keygen -t rsa -f /etc/ssh/ssh_host_rsa_key -N ""
-RUN [ ! -f /etc/ssh/ssh_host_ecdsa_key ] && ssh-keygen -t ecdsa -f /etc/ssh/ssh_host_ecdsa_key -N ""
-RUN [ ! -f /etc/ssh/ssh_host_ed25519_key ] && ssh-keygen -t ed25519 -f /etc/ssh/ssh_host_ed25519_key -N ""
-
-# Rest of your Dockerfile here
+# Ensure the permissions are correct for SSH
+RUN chown root:root /etc/ssh/sshd_config
 
 # Create a group and user with specific UID and GID
 RUN groupadd -g 1000 lazarev && \
@@ -31,9 +27,6 @@ RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
 # Expose SSH port
 EXPOSE 22
-
-# Switch to the 'lazarev' user
-USER lazarev
 
 # Set the entrypoint
 ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
