@@ -6,14 +6,12 @@ on:
       - main
     paths:
       - '**/Dockerfile'
-      - '**/*.dockerfile'
       - '.github/workflows/docker-build.yml'
   pull_request:
     branches:
       - main
     paths:
       - '**/Dockerfile'
-      - '**/*.dockerfile'
       - '.github/workflows/docker-build.yml'
 
 jobs:
@@ -24,8 +22,6 @@ jobs:
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
       - name: Find Dockerfiles and Set Matrix
         id: set-matrix
@@ -36,13 +32,13 @@ jobs:
           
           while IFS= read -r -d '' df; do
             dir=$(dirname "$df")
-            # Sanitize image name more strictly
-            image_name=$(basename "$dir" | sed 's/[^a-zA-Z0-9.-]/-/g' | tr '[:upper:]' '[:lower:]')
-            # Ensure valid start character
+            # More strict image name sanitization
+            image_name=$(basename "$dir" | tr -cd '[:alnum:]-_.' | tr '[:upper:]' '[:lower:]')
+            # Ensure valid Docker image name
             if [[ ! $image_name =~ ^[a-z0-9] ]]; then
               image_name="app-${image_name}"
             fi
-            # Remove any invalid patterns
+            # Remove invalid patterns
             image_name=$(echo "$image_name" | sed 's/-\+/-/g' | sed 's/^\.|\.$//')
             
             if [ "$first" = true ]; then
@@ -81,6 +77,12 @@ jobs:
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Debug image names
+        run: |
+          echo "Image name: lazarevcloud/${{ matrix.image_name }}"
+          echo "Latest tag: lazarevcloud/${{ matrix.image_name }}:latest"
+          echo "SHA tag: lazarevcloud/${{ matrix.image_name }}:${{ github.sha }}"
 
       - name: Build and Push Docker Image
         uses: docker/build-push-action@v5
