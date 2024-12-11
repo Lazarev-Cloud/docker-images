@@ -1,25 +1,26 @@
 # Use bitnami/minideb:bookworm as the base image
 FROM bitnami/minideb:bookworm
 
-# Install OpenSSH Server and sudo
+# Install necessary packages
 RUN install_packages openssh-server sudo
 
-# Create SSH directory
+# Create SSH directory for the SSH daemon
 RUN mkdir /var/run/sshd
 
-# Create a non-root user 'lazarev'
-RUN useradd -m -s /bin/bash lazarev
+# Create a group and user with specific UID and GID
+RUN groupadd -g 1000 lazarev && \
+    useradd -m -u 1000 -g lazarev -s /bin/bash lazarev
 
-# Set a password for 'lazarev' (optional)
-# It's recommended to use SSH keys instead of passwords for authentication
-# RUN echo 'lazarev:your_password_here' | chpasswd
+# Create the .ssh directory and set ownership
+RUN mkdir -p /home/lazarev/.ssh && \
+    chown -R lazarev:lazarev /home/lazarev/.ssh
 
 # Copy the updated entrypoint script
 COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
-# Set the ownership of SSH directories
-RUN chown -R lazarev:lazarev /home/lazarev/.ssh
+# Set the ownership of SSH directories (redundant if already set above)
+# RUN chown -R lazarev:lazarev /home/lazarev/.ssh
 
 # Expose SSH port
 EXPOSE 22

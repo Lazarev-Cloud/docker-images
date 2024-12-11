@@ -18,7 +18,7 @@ SSH_PUBLIC_KEY_BASE64=${SSH_PUBLIC_KEY_BASE64:-}
 # Define the path for authorized_keys
 AUTHORIZED_KEYS_PATH="/home/$SSH_USER/.ssh/authorized_keys"
 
-# Create the .ssh directory if it doesn't exist
+# Create the .ssh directory if it doesn't exist (redundant if created in Dockerfile)
 mkdir -p /home/"$SSH_USER"/.ssh
 chmod 700 /home/"$SSH_USER"/.ssh
 
