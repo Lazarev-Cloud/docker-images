@@ -7,6 +7,11 @@ RUN install_packages openssh-server sudo
 # Create SSH directory for the SSH daemon
 RUN mkdir /var/run/sshd
 
+# Generate SSH host keys
+RUN ssh-keygen -t rsa -f /etc/ssh/ssh_host_rsa_key -N ""
+RUN ssh-keygen -t ecdsa -f /etc/ssh/ssh_host_ecdsa_key -N ""
+RUN ssh-keygen -t ed25519 -f /etc/ssh/ssh_host_ed25519_key -N ""
+
 # Create a group and user with specific UID and GID
 RUN groupadd -g 1000 lazarev && \
     useradd -m -u 1000 -g lazarev -s /bin/bash lazarev
@@ -18,9 +23,6 @@ RUN mkdir -p /home/lazarev/.ssh && \
 # Copy the updated entrypoint script
 COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
-
-# Set the ownership of SSH directories (redundant if already set above)
-# RUN chown -R lazarev:lazarev /home/lazarev/.ssh
 
 # Expose SSH port
 EXPOSE 22
