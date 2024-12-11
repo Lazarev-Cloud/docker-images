@@ -28,7 +28,7 @@ chmod 700 /home/"$SSH_USER"/.ssh
 
 if [ -n "$SSH_PUBLIC_KEY" ]; then
     echo "Decoding and setting up authorized_keys for user: $SSH_USER"
-    echo "$SSH_PUBLIC_KEY" | base64 --decode > "$AUTHORIZED_KEYS_PATH"
+    echo "$SSH_PUBLIC_KEY" > "$AUTHORIZED_KEYS_PATH"
     chmod 600 "$AUTHORIZED_KEYS_PATH"
     chown "$SSH_USER":"$SSH_USER" "$AUTHORIZED_KEYS_PATH"
 else
