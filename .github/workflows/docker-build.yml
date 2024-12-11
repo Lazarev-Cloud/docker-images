@@ -1,69 +1,86 @@
-name: Build and Push Docker Images
+name: Build Docker Images
 
 on:
   push:
-    branches:
-      - main
+    branches: [ main ]
     paths:
       - '**/Dockerfile'
       - '.github/workflows/docker-build.yml'
   pull_request:
-    branches:
-      - main
+    branches: [ main ]
     paths:
       - '**/Dockerfile'
       - '.github/workflows/docker-build.yml'
+  # Allow manual trigger
+  workflow_dispatch:
 
 jobs:
-  set-matrix:
+  discover:
+    name: Discover Dockerfiles
     runs-on: ubuntu-latest
     outputs:
-      matrix: ${{ steps.set-matrix.outputs.matrix }}
+      matrix: ${{ steps.discover.outputs.matrix }}
+    
     steps:
-      - name: Checkout Repository
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Find Dockerfiles and Set Matrix
-        id: set-matrix
+      - name: Discover Dockerfiles
+        id: discover
         run: |
-          echo "Finding Dockerfiles..."
-          json="{\"dockerfiles\":["
-          first=true
+          # Find all Dockerfiles recursively
+          DOCKERFILES=$(find . -type f -name "Dockerfile" -not -path "*/\.*")
           
-          while IFS= read -r -d '' df; do
-            dir=$(dirname "$df")
-            # Get the folder name and sanitize it
-            folder_name=$(basename "$dir" | tr -cd '[:alnum:]-_.' | tr '[:upper:]' '[:lower:]')
-            # Ensure valid Docker image name
-            if [[ ! $folder_name =~ ^[a-z0-9] ]]; then
-              folder_name="app-${folder_name}"
-            fi
-            # Remove invalid patterns
-            folder_name=$(echo "$folder_name" | sed 's/-\+/-/g' | sed 's/^\.|\.$//')
-            
-            if [ "$first" = true ]; then
-              first=false
-            else
-              json+=","
-            fi
-            
-            json+="{\"path\":\"$df\",\"context\":\"$dir\",\"folder_name\":\"$folder_name\"}"
-          done < <(find . -type f -name 'Dockerfile' -print0)
+          # Initialize matrix json
+          echo "Building matrix..."
+          JSON="{"
+          JSON="${JSON}\"include\":["
           
-          json+="]}"
-          echo "matrix=$json" >> $GITHUB_OUTPUT
-          echo "Matrix JSON: $json"
+          FIRST=1
+          for DOCKERFILE in $DOCKERFILES; do
+            # Get directory path and name
+            DIR=$(dirname "$DOCKERFILE")
+            NAME=$(basename "$DIR" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9-]/-/g' | sed 's/-\+/-/g' | sed 's/^-\|-$//g')
+            
+            # Skip if name is empty after sanitization
+            if [ -z "$NAME" ]; then
+              continue
+            }
+            
+            # Add comma if not first entry
+            if [ "$FIRST" -eq 0 ]; then
+              JSON="${JSON},"
+            fi
+            FIRST=0
+            
+            # Add build configuration
+            JSON="${JSON}{"
+            JSON="${JSON}\"name\":\"$NAME\","
+            JSON="${JSON}\"dockerfile\":\"$DOCKERFILE\","
+            JSON="${JSON}\"context\":\"$DIR\""
+            JSON="${JSON}}"
+          done
+          
+          JSON="${JSON}]}"
+          
+          # Set output
+          echo "matrix=$JSON" >> $GITHUB_OUTPUT
+          
+          # Debug output
+          echo "Generated matrix:"
+          echo "$JSON" | jq .
 
-  build-and-push:
-    needs: set-matrix
+  build:
+    name: Build and Push
+    needs: discover
+    if: ${{ needs.discover.outputs.matrix != '{"include":[]}' }}
     runs-on: ubuntu-latest
-    if: ${{ needs.set-matrix.outputs.matrix != '{"dockerfiles":[]}' }}
     strategy:
-      matrix: ${{ fromJson(needs.set-matrix.outputs.matrix) }}
+      matrix: ${{ fromJson(needs.discover.outputs.matrix) }}
       fail-fast: false
 
     steps:
-      - name: Checkout Repository
+      - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Set up QEMU
@@ -71,36 +88,33 @@ jobs:
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
+        with:
+          platforms: linux/amd64,linux/arm64
 
-      - name: Log in to Docker Hub
+      - name: Login to Docker Hub
+        if: github.event_name != 'pull_request'
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      # Debug step to verify image name construction
-      - name: Debug Image Names
-        run: |
-          REPOSITORY="lazarevcloud"
-          IMAGE_NAME="${{ matrix.folder_name }}"
-          FULL_IMAGE_NAME="$REPOSITORY/$IMAGE_NAME"
-          
-          echo "FULL_IMAGE_NAME=$FULL_IMAGE_NAME" >> $GITHUB_ENV
-          echo "Repository: $REPOSITORY"
-          echo "Image Name: $IMAGE_NAME"
-          echo "Full Image Name: $FULL_IMAGE_NAME"
-          echo "SHA: ${{ github.sha }}"
+      - name: Generate tags
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: lazarevcloud/${{ matrix.name }}
+          tags: |
+            type=raw,value=latest,enable=${{ github.ref == format('refs/heads/{0}', 'main') }}
+            type=sha,enable=true,priority=100,prefix=,suffix=,format=short
 
-      - name: Build and Push Docker Image
+      - name: Build and push
         uses: docker/build-push-action@v5
         with:
           context: ${{ matrix.context }}
-          file: ${{ matrix.path }}
+          file: ${{ matrix.dockerfile }}
+          platforms: linux/amd64,linux/arm64
           push: ${{ github.event_name != 'pull_request' }}
-          tags: |
-            ${{ env.FULL_IMAGE_NAME }}:latest
-            ${{ env.FULL_IMAGE_NAME }}:${{ github.sha }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-          platforms: linux/amd64,linux/arm64
-          provenance: false
